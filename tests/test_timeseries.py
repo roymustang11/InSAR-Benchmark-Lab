@@ -3,7 +3,7 @@ from datetime import date
 import numpy as np
 import pytest
 
-from insar_benchmark_lab.timeseries import align_by_date, load_csv_timeseries
+from disp_s1_eval.timeseries import align_by_date, load_csv_timeseries
 
 
 def test_load_csv_timeseries_reads_required_columns(tmp_path):

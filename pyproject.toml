@@ -3,16 +3,26 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "insar-benchmark-lab"
-version = "0.1.0"
-description = "Reproducible InSAR benchmarking and validation tools for ground deformation studies."
+name = "disp-s1-evaluation"
+version = "0.2.0"
+description = "A reproducible evaluation framework for the OPERA DISP-S1 displacement product against independent geodetic ground truth."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
   { name = "Shubham Singh" }
 ]
-keywords = ["InSAR", "remote-sensing", "geodesy", "subsidence", "GNSS"]
+keywords = [
+  "InSAR",
+  "OPERA",
+  "DISP-S1",
+  "Sentinel-1",
+  "geodesy",
+  "GNSS",
+  "subsidence",
+  "validation",
+  "remote-sensing"
+]
 dependencies = [
   "numpy>=1.24",
   "PyYAML>=6.0"
@@ -22,12 +32,25 @@ dependencies = [
 dev = [
   "pytest>=8.0"
 ]
+io = [
+  "xarray>=2023.10",
+  "h5py>=3.9",
+  "netCDF4>=1.6",
+  "zarr>=2.16",
+  "pandas>=2.0",
+  "requests>=2.31"
+]
 notebooks = [
   "earthaccess>=0.18",
   "jupyter>=1.0",
   "matplotlib>=3.8",
   "pandas>=2.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/roymustang11/InSAR"
+Documentation = "https://github.com/roymustang11/InSAR/tree/main/docs"
+Issues = "https://github.com/roymustang11/InSAR/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

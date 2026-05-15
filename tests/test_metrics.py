@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from insar_benchmark_lab.metrics import (
+from disp_s1_eval.metrics import (
     correlation,
     mae,
     rmse,

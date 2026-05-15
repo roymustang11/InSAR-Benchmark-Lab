@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from insar_benchmark_lab.config import StudyAreaConfig, load_study_area_config
+from disp_s1_eval.config import StudyAreaConfig, load_study_area_config
 
 
 def test_load_study_area_config(tmp_path):

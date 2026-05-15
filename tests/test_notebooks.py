@@ -50,6 +50,17 @@ def test_notebook_05_documents_story_map_outputs():
     assert "figure_panels" in text
 
 
+def test_notebook_06_framework_overview_documents_core_modules():
+    text = _notebook_text(Path("notebooks/06_framework_overview.ipynb"))
+
+    assert "disp_s1_eval" in text
+    assert "available_readers" in text
+    assert "parse_tenv3" in text
+    assert "project_enu_to_los" in text
+    assert "triple_collocation" in text
+    assert "manifest.json" in text
+
+
 def test_all_notebooks_are_valid_json():
     notebook_paths = sorted(Path("notebooks").glob("*.ipynb"))
 

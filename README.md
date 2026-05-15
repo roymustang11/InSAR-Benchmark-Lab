@@ -1,81 +1,200 @@
-# InSAR Benchmark Lab
+<h1 align="center">DISP-S1 Evaluation Framework</h1>
 
-Reproducible research tools and notebooks for validating open InSAR deformation products.
+<p align="center">
+  <em>Reproducible validation of the OPERA Sentinel-1 surface-displacement product against continuous GNSS, with a uniform abstraction over MintPy, MiaplPy, HyP3-SBAS, and PyGMTSAR.</em>
+</p>
 
-The first research theme is groundwater-related land subsidence. The repository focuses on a practical question that matters for scientific and operational InSAR work:
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-63%20passing-brightgreen.svg">
+  <img alt="Status" src="https://img.shields.io/badge/status-active-success.svg">
+</p>
 
-> When should an open InSAR deformation product be trusted for a specific ground-deformation problem?
+<p align="center">
+  <img src="docs/figures/workflow.png" alt="Pipeline overview" width="900"/>
+</p>
 
-This project does not replace mature processors such as MintPy, MiaplPy, ISCE3, PyGMTSAR, OPERA, ARIA, or HyP3. It sits above them as a benchmark and validation layer: ingest outputs, compare workflows, quantify uncertainty, validate against independent geodetic observations, and communicate results through reproducible notebooks.
+---
 
-## Research Direction
+## Overview
 
-The initial flagship case study is land subsidence in California's Central Valley. This is a strong first target because it has clear deformation signals, public relevance, Sentinel-1 coverage, prior literature, and GNSS stations that can support validation.
+This repository is a research instrument for evaluating Sentinel-1 InSAR
+displacement products against independent geodetic ground truth. The
+framework treats reference-frame realization, atmospheric correction, and
+processor choice as experimental factors, and produces every result as a
+versioned artifact with full provenance.
 
-Later modules will extend the same framework to volcano deformation and landslide monitoring.
+The first study area is groundwater-related land subsidence in the
+San Joaquin Valley, California. Volcano and landslide configurations
+follow the same protocol and are added under [`configs/`](configs/) and
+[`experiments/`](experiments/).
 
-## Workflow Diagram
+## Highlights
 
-```mermaid
-flowchart LR
-    A[Study-area config] --> B[OPERA DISP-S1 metadata search]
-    B --> C[Product inventory and metadata inspection]
-    C --> D[InSAR displacement time series]
-    E[GNSS time series] --> F[Date and reference alignment]
-    D --> F
-    F --> G[Validation metrics]
-    G --> H[Reference and uncertainty sensitivity]
-    H --> I[Deformation story map]
-    I --> J[Research interpretation and roadmap]
-```
+- **Pre-declared validation protocol.** Inclusion criteria, collocation
+  rules, statistical tests, and verdicts fixed in
+  [`docs/validation-protocol.md`](docs/validation-protocol.md) before any
+  experiment is run.
+- **Uniform processor abstraction.** One `DeformationProductReader`
+  protocol with adapters for OPERA DISP-S1, MintPy, MiaplPy, HyP3-SBAS,
+  and PyGMTSAR.
+- **Geodetically correct GNSS handling.** ENU projected to per-pixel LOS
+  with full covariance propagation, not the up-only approximation.
+- **Statistical error decomposition.** Empirical variogram with
+  exponential fit, triple collocation, paired bootstrap, reference-point
+  bootstrap, and closure-phase residuals.
+- **Reproducible experiments.** One CLI command per experiment, with a
+  `manifest.json` recording software versions, granule IDs, station
+  list, random seeds, runtime, and SHA-256 of every output.
 
-## Planned Notebook Track
+## Pipeline
 
-| Notebook | Status | Purpose |
-| --- | --- | --- |
-| [01 Project Orientation](notebooks/01_project_orientation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/01_project_orientation.ipynb) | Runnable orientation | Study area, scientific question, data sources, workflow map. |
-| [02 OPERA DISP-S1 Product Search](notebooks/02_hyp3_or_opera_to_timeseries.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/02_hyp3_or_opera_to_timeseries.ipynb) | Runnable metadata search | Search OPERA DISP-S1 products, build an inventory table, and inspect product metadata links. |
-| [03 InSAR Time-Series Validation](notebooks/03_mintpy_timeseries_validation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/03_mintpy_timeseries_validation.ipynb) | Runnable method example | Compare InSAR displacement time series against GNSS using controlled example data. |
-| [04 Uncertainty And Reference Sensitivity](notebooks/04_uncertainty_and_reference_sensitivity.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/04_uncertainty_and_reference_sensitivity.ipynb) | Runnable method example | Test reference-point, coherence, and masking sensitivity using controlled example data. |
-| [05 Deformation Story Map](notebooks/05_deformation_story_map.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/05_deformation_story_map.ipynb) | Runnable method example | Produce final maps, time-series plots, residuals, and interpretation figures using controlled example data. |
+The framework consumes Sentinel-1 displacement products and continuous-GNSS
+daily positions, projects both into a common line-of-sight reference,
+applies the named collocation strategy, and reports per-station and
+aggregate statistics together with sensitivity diagnostics.
 
-Notebooks 03-05 use controlled example data to define the analysis methods. They are not Central Valley deformation measurements. OPERA/MintPy extraction and GNSS alignment will replace the example data in the measured-analysis phase.
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/figures/wrapped_phase_vs_displacement.png" width="440"/><br/>
+      <sub>LOS displacement and wrapped interferometric phase (illustrative)</sub>
+    </td>
+    <td align="center">
+      <img src="docs/figures/coherence_map.png" width="440"/><br/>
+      <sub>Mean temporal coherence used by the coherence mask</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/figures/timeseries_insar_vs_gnss.png" width="440"/><br/>
+      <sub>Co-located InSAR and GNSS LOS time series</sub>
+    </td>
+    <td align="center">
+      <img src="docs/figures/residual_variogram.png" width="440"/><br/>
+      <sub>Empirical residual variogram with exponential fit</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/figures/los_geometry.png" width="440"/><br/>
+      <sub>ENU-to-LOS projection convention</sub>
+    </td>
+    <td align="center">
+      <img src="docs/figures/processor_intercomparison.png" width="440"/><br/>
+      <sub>Cross-processor velocity bias (illustrative)</sub>
+    </td>
+  </tr>
+</table>
 
-## Quickstart
+> Figures shown above are synthetic placeholders that illustrate the
+> framework's data model and reporting style. Real-data figures are
+> generated by experiments under [`experiments/`](experiments/) and live
+> next to the experiment that produced them.
+
+## Installation
 
 ```bash
+git clone https://github.com/roymustang11/InSAR.git
+cd InSAR
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev,notebooks]"
+python -m pip install -e ".[dev]"
 pytest
 ```
 
-## Repository Layout
+For real-data experiments (HDF5, NetCDF, Zarr, NGL downloads):
 
-```text
-configs/                  Study-area configuration files.
-data/                     External data instructions; large data is not committed.
-docs/                     Research notes, roadmap, and planning documents.
-notebooks/                Colab-ready notebook sequence.
-src/insar_benchmark_lab/  Lightweight validation and benchmarking utilities.
-tests/                    Unit tests for metrics, config loading, and future loaders.
+```bash
+python -m pip install -e ".[dev,io,notebooks]"
 ```
 
-## First Milestone
+OPERA products require an Earthdata Login. Credentials are read from
+`.netrc`, environment variables, or an interactive `earthaccess` flow.
 
-- Build a small tested Python package for metrics and study-area configuration.
-- Document a Central Valley subsidence case study.
-- Prepare a Colab-style notebook sequence.
-- Validate deformation time series against independent GNSS data.
-- Quantify sensitivity to reference-point choice and masking decisions.
+## Usage
 
-## Data Policy
+### Validate an experiment configuration
 
-Large geospatial products, HDF5 files, GeoTIFFs, and downloaded archives are intentionally excluded from Git. The repository will document how to obtain data from open sources such as ASF HyP3, OPERA, ARIA, MintPy-compatible outputs, and GNSS archives.
+```bash
+python -m experiments.E01_central_valley_disp_s1_vs_gnss.run \
+    --config experiments/E01_central_valley_disp_s1_vs_gnss/config.yml \
+    --output experiments/E01_central_valley_disp_s1_vs_gnss/results \
+    --dry-run
+```
 
-OPERA product files are Earthdata-protected, so Zarr-reference metadata inspection in Notebook 02 is implemented as an opt-in workflow with `RUN_AUTHENTICATED_INSPECTION = True`. It requires Earthdata Login credentials configured through `.netrc`, environment variables, or an interactive `earthaccess` login flow.
+The dry-run validates the configuration, emits a `manifest.json`, and
+exits without performing I/O. It is the same orchestration path used by
+the wet run.
 
-## Status
+### Library example
 
-This repository is in its initial research-foundation phase. The implemented code currently covers validation metrics, OPERA product inventory helpers, time-series utilities, and reproducible study-area configuration.
+```python
+from disp_s1_eval.processors import OperaDispS1Reader, available_readers
+from disp_s1_eval.gnss import parse_tenv3, project_enu_to_los
+from disp_s1_eval.errors import triple_collocation, empirical_variogram
+from disp_s1_eval.metrics import rmse, velocity_difference
+
+print(available_readers())
+# ['hyp3_sbas', 'mintpy', 'miaplpy', 'opera_disp_s1', 'pygmtsar']
+```
+
+A full self-contained tour is in
+[`notebooks/06_framework_overview.ipynb`](notebooks/06_framework_overview.ipynb).
+
+## Repository layout
+
+```text
+configs/                   Study-area configurations (YAML).
+data/                      Local data conventions; large products are not committed.
+docs/                      Methodology, validation protocol, data provenance, figures.
+experiments/               Numbered, self-contained experiments.
+notebooks/                 Method-definition and overview notebooks.
+src/disp_s1_eval/          Library: processors, gnss, errors, metrics, config.
+tests/                     Unit tests (63 tests, all passing).
+```
+
+## Documentation
+
+| Document | Purpose |
+| --- | --- |
+| [`docs/methodology.md`](docs/methodology.md) | LOS geometry, reference frames, atmospheric correction handling, noise model, bibliography. |
+| [`docs/validation-protocol.md`](docs/validation-protocol.md) | Pre-declared per-station and aggregate validation rules. |
+| [`docs/data-provenance.md`](docs/data-provenance.md) | Source, version, license, access, and citation for every dataset. |
+| [`docs/research-roadmap.md`](docs/research-roadmap.md) | Phased extension to volcano and landslide study areas. |
+
+## Library modules
+
+| Module | Purpose |
+| --- | --- |
+| `disp_s1_eval.processors` | `DeformationProductReader` protocol and adapters for OPERA DISP-S1, MintPy, MiaplPy, HyP3-SBAS, PyGMTSAR. |
+| `disp_s1_eval.gnss` | NGL `tenv3` ingestion, ENU-to-LOS projection with covariance, named temporal collocation strategies. |
+| `disp_s1_eval.errors` | Empirical variogram and exponential fit, triple collocation, paired and reference-point bootstrap, closure-phase residuals. |
+| `disp_s1_eval.metrics` | Pointwise validation metrics (RMSE, MAE, bias, correlation, σ-coverage, velocity difference). |
+| `disp_s1_eval.opera` | OPERA DISP-S1 filename parsing and Kerchunk/Zarr reference inspection. |
+| `disp_s1_eval.timeseries` | `DisplacementTimeSeries` container, CSV ingestion, date alignment. |
+| `disp_s1_eval.config` | Validated study-area configuration loader. |
+
+## Citation
+
+If you use this framework in academic work, please cite it via
+[`CITATION.cff`](CITATION.cff).
+
+## License
+
+[MIT](LICENSE).
+
+## Acknowledgements
+
+This framework integrates open-source software and open data products:
+[MintPy](https://github.com/insarlab/MintPy),
+[MiaplPy](https://github.com/insarlab/MiaplPy),
+[ISCE3](https://github.com/isce-framework/isce3),
+[PyGMTSAR](https://github.com/AlexeyPechnikov/pygmtsar),
+[HyP3](https://hyp3-docs.asf.alaska.edu/),
+[earthaccess](https://earthaccess.readthedocs.io/), and the
+[Nevada Geodetic Laboratory](http://geodesy.unr.edu/) GNSS solutions.
+See [`AUTHORS.md`](AUTHORS.md) for the contributor list and
+[`docs/data-provenance.md`](docs/data-provenance.md) for full citations.

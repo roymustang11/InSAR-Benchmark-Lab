@@ -1,0 +1,41 @@
+name: E01 Central Valley DISP-S1 vs GNSS
+slug: E01_central_valley_disp_s1_vs_gnss
+study_area:
+  region:
+    west: -121.0
+    south: 35.0
+    east: -119.0
+    north: 37.0
+  time_window:
+    start: "2018-01-01"
+    end: "2023-12-31"
+  stable_subwindow:
+    start: "2018-01-01"
+    end: "2018-06-30"
+processor:
+  name: opera_disp_s1
+  apply_atmospheric_correction: true
+  polarization_filter: VV
+gnss:
+  source: NGL
+  reference_frame: IGS14
+  stations:
+    - P056
+    - P304
+    - P308
+    - P566
+    - P056
+    - LEMA
+    - LIND
+    - MUSB
+collocation:
+  strategy: nearest
+  max_offset_days: 3
+masking:
+  coherence_threshold: 0.5
+  neighborhood_size: 3
+reference_point_bootstrap:
+  n_draws: 200
+  quantile_low: 0.025
+  quantile_high: 0.975
+random_seed: 20240101

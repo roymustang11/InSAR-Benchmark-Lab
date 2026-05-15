@@ -1,6 +1,6 @@
 import pytest
 
-from insar_benchmark_lab.opera import (
+from disp_s1_eval.opera import (
     OPERA_DISP_S1_SHORT_NAME,
     classify_opera_link,
     extract_zarr_reference_variables,

@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "DISP-S1 Evaluation Framework"
+abstract: >
+  A reproducible evaluation framework for the OPERA Level-3 DISP-S1
+  Sentinel-1 displacement product against independent geodetic ground
+  truth from continuous GNSS networks, with a uniform processor
+  abstraction for cross-processor comparison against MintPy, MiaplPy,
+  HyP3-SBAS, and PyGMTSAR.
+authors:
+  - family-names: Singh
+    given-names: Shubham
+keywords:
+  - InSAR
+  - OPERA
+  - DISP-S1
+  - Sentinel-1
+  - GNSS
+  - validation
+  - subsidence
+  - geodesy
+license: MIT
+version: "0.2.0"
+date-released: "2026-05-15"
+repository-code: "https://github.com/roymustang11/InSAR"

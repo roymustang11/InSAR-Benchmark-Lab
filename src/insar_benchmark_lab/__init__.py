@@ -9,10 +9,14 @@ from insar_benchmark_lab.metrics import (
     uncertainty_coverage,
     velocity_difference,
 )
+from insar_benchmark_lab.timeseries import DisplacementTimeSeries, align_by_date, load_csv_timeseries
 
 __all__ = [
+    "DisplacementTimeSeries",
     "StudyAreaConfig",
+    "align_by_date",
     "correlation",
+    "load_csv_timeseries",
     "load_study_area_config",
     "mae",
     "rmse",

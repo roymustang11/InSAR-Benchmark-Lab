@@ -26,7 +26,7 @@ def test_notebook_03_documents_validation_workflow():
     text = _notebook_text(Path("notebooks/03_mintpy_timeseries_validation.ipynb"))
 
     assert "DEMONSTRATION_DATA" in text
-    assert "This is not a real deformation result" in text
+    assert "not Central Valley deformation measurements" in text
     assert "rmse" in text
     assert "velocity_difference" in text
     assert "GNSS" in text

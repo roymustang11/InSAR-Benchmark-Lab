@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from disp_s1_eval.opera import (
     OPERA_DISP_S1_SHORT_NAME,
@@ -8,6 +9,7 @@ from disp_s1_eval.opera import (
     links_by_kind,
     parse_opera_disp_s1_filename,
 )
+from disp_s1_eval.processors import BBox, OperaDispS1Reader
 
 
 PRODUCT_URL = (
@@ -113,3 +115,34 @@ def test_granule_to_inventory_record_handles_current_earthaccess_shape():
     assert record["netcdf_link"] == PRODUCT_URL
     assert record["zarr_reference_link"].endswith(".zarr.json.gz")
     assert record["frame_id"] == "F38502"
+
+
+def test_opera_reader_selects_projected_xy_grid(tmp_path):
+    xr = pytest.importorskip("xarray")
+    pyproj = pytest.importorskip("pyproj")
+    crs = pyproj.CRS.from_epsg(32611)
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+    x_values, _ = transformer.transform([-120.1, -120.0, -119.9], [36.0, 36.0, 36.0])
+    _, y_values = transformer.transform([-120.0, -120.0, -120.0], [35.9, 36.0, 36.1])
+    path = tmp_path / (
+        "OPERA_L3_DISP-S1_IW_F08882_VV_20171220T000000Z_"
+        "20180101T000000Z_v1.0_20240101T000000Z.nc"
+    )
+    ds = xr.Dataset(
+        data_vars={
+            "spatial_ref": ((), 0, {"crs_wkt": crs.to_wkt()}),
+            "displacement": (("y", "x"), np.ones((3, 3), dtype=float)),
+            "temporal_coherence": (("y", "x"), np.full((3, 3), 0.8, dtype=float)),
+        },
+        coords={"x": x_values, "y": y_values},
+    )
+    ds.to_netcdf(path, engine="scipy")
+
+    sample = OperaDispS1Reader([path]).load(
+        BBox(west=-120.05, south=35.95, east=-119.95, north=36.05)
+    )
+
+    assert sample.displacement.shape == (1, 1, 1)
+    assert sample.geometry.los_unit.shape == (3, 1, 1)
+    assert sample.longitude[0] == pytest.approx(-120.0, abs=0.02)
+    assert sample.latitude[0] == pytest.approx(36.0, abs=0.02)

@@ -51,10 +51,54 @@ Provenance for both is documented in
 
 ## Reproducibility
 
+### 1. Build or inspect the OPERA cache
+
+With Earthdata credentials configured:
+
 ```bash
 python -m experiments.E01_central_valley_disp_s1_vs_gnss.run \
     --config experiments/E01_central_valley_disp_s1_vs_gnss/config.yml \
-    --output experiments/E01_central_valley_disp_s1_vs_gnss/results
+    --output experiments/E01_central_valley_disp_s1_vs_gnss/results \
+    --download-only \
+    --limit-granules 12
+```
+
+To reuse files already present in `processor.cache_dir`:
+
+```bash
+python -m experiments.E01_central_valley_disp_s1_vs_gnss.run \
+    --config experiments/E01_central_valley_disp_s1_vs_gnss/config.yml \
+    --output experiments/E01_central_valley_disp_s1_vs_gnss/results \
+    --download-only \
+    --use-existing
+```
+
+### 2. Prepare GNSS station metadata
+
+The default config expects a compact station holdings file at:
+
+```text
+data/raw/ngl/central_valley_holdings.txt
+```
+
+Format:
+
+```text
+station latitude longitude start end epochs
+P056 36.1234 -120.1234 2018-01-01 2023-12-31 1800
+```
+
+Stations are selected automatically from this file using the AOI, time
+window, and `gnss.min_epochs` threshold in `config.yml`. Corresponding
+`tenv3` files are cached under `gnss.cache_dir`.
+
+### 3. Run the validation
+
+```bash
+python -m experiments.E01_central_valley_disp_s1_vs_gnss.run \
+    --config experiments/E01_central_valley_disp_s1_vs_gnss/config.yml \
+    --output experiments/E01_central_valley_disp_s1_vs_gnss/results \
+    --use-existing
 ```
 
 The run is deterministic given the seed declared in `config.yml`. Wall

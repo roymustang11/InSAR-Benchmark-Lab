@@ -14,20 +14,25 @@ study_area:
     end: "2018-06-30"
 processor:
   name: opera_disp_s1
+  frame_id: F09155
   apply_atmospheric_correction: true
   polarization_filter: VV
+  cache_dir: data/raw/opera/disp_s1/central_valley
+  search_limit: 12
+  use_existing: false
 gnss:
   source: NGL
-  reference_frame: IGS14
+  reference_frame: IGS20
+  cache_dir: data/raw/ngl/central_valley
+  holdings_path: data/raw/ngl/central_valley_holdings.txt
+  holdings_url: https://geodesy.unr.edu/NGLStationPages/DataHoldings.txt
+  min_epochs: 200
   stations:
-    - P056
-    - P304
-    - P308
-    - P566
-    - P056
-    - LEMA
-    - LIND
-    - MUSB
+    - CRBT
+    - JLN5
+    - LOWS
+    - P284
+    - P285
 collocation:
   strategy: nearest
   max_offset_days: 3

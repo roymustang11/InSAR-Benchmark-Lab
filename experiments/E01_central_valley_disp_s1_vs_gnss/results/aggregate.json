@@ -1,0 +1,106 @@
+{
+  "bias_mm": 3.552713678800501e-16,
+  "mae_mm": 17.661725079469665,
+  "n_collocated_pairs": 10,
+  "n_skipped_stations": 0,
+  "n_stations": 5,
+  "rmse_mm": 17.680639762898068,
+  "skipped_stations": [],
+  "stations": [
+    {
+      "bias_mm": 7.105427357601002e-15,
+      "correlation": -1.0,
+      "latitude": 35.7916,
+      "longitude": -120.7508,
+      "mae_mm": 18.30779352500378,
+      "n_pairs": 2,
+      "reference_offset_mm": -100.42988237944279,
+      "rmse_mm": 18.30779352500378,
+      "station_id": "CRBT",
+      "uncertainty_coverage_1sigma": null
+    },
+    {
+      "bias_mm": 1.7763568394002505e-15,
+      "correlation": -0.9999999999999999,
+      "latitude": 35.8732,
+      "longitude": -120.8329,
+      "mae_mm": 17.070471794333166,
+      "n_pairs": 2,
+      "reference_offset_mm": 6.6726622767549735,
+      "rmse_mm": 17.070471794333166,
+      "station_id": "JLN5",
+      "uncertainty_coverage_1sigma": null
+    },
+    {
+      "bias_mm": -7.105427357601002e-15,
+      "correlation": -1.0,
+      "latitude": 35.8287,
+      "longitude": -120.5943,
+      "mae_mm": 17.818169642093245,
+      "n_pairs": 2,
+      "reference_offset_mm": -85.97948746478167,
+      "rmse_mm": 17.818169642093245,
+      "station_id": "LOWS",
+      "uncertainty_coverage_1sigma": null
+    },
+    {
+      "bias_mm": -3.552713678800501e-15,
+      "correlation": 1.0,
+      "latitude": 35.9333,
+      "longitude": -120.9068,
+      "mae_mm": 18.680522426154933,
+      "n_pairs": 2,
+      "reference_offset_mm": -86.87327383629761,
+      "rmse_mm": 18.680522426154933,
+      "station_id": "P284",
+      "uncertainty_coverage_1sigma": null
+    },
+    {
+      "bias_mm": 0.0,
+      "correlation": 1.0,
+      "latitude": 36.4172,
+      "longitude": -120.98150000000001,
+      "mae_mm": 16.43166800976321,
+      "n_pairs": 2,
+      "reference_offset_mm": -19.602871025919335,
+      "rmse_mm": 16.43166800976321,
+      "station_id": "P285",
+      "uncertainty_coverage_1sigma": null
+    }
+  ],
+  "variogram": {
+    "bins": [
+      {
+        "distance": 0.03522272313436347,
+        "n_pairs": 5,
+        "semivariance": 625.2100448507443
+      },
+      {
+        "distance": 0.1056681694030904,
+        "n_pairs": 8,
+        "semivariance": 316.73480910762396
+      },
+      {
+        "distance": 0.17611361567181733,
+        "n_pairs": 8,
+        "semivariance": 334.1999237542079
+      },
+      {
+        "distance": 0.24655906194054428,
+        "n_pairs": 4,
+        "semivariance": 304.4440883377687
+      },
+      {
+        "distance": 0.31700450820927123,
+        "n_pairs": 4,
+        "semivariance": 333.22454375424536
+      }
+    ],
+    "model": {
+      "nugget": 375.31746773293236,
+      "partial_sill": 6.244502249586189e-07,
+      "range": 116.65944977794103,
+      "sill": 375.3174683573826
+    }
+  }
+}

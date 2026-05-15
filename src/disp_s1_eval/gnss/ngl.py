@@ -46,7 +46,8 @@ from typing import Iterable
 import numpy as np
 
 
-NGL_TENV3_BASE_URL = "http://geodesy.unr.edu/gps_timeseries/tenv3"
+NGL_TENV3_BASE_URL = "https://geodesy.unr.edu/gps_timeseries/IGS20/tenv3"
+NGL_DATAHOLDINGS_URL = "https://geodesy.unr.edu/NGLStationPages/DataHoldings.txt"
 
 
 _MONTH_MAP = {
@@ -63,6 +64,18 @@ class GnssStation:
     longitude: float
     latitude: float
     elevation_m: float | None = None
+
+
+@dataclass(frozen=True)
+class StationHolding:
+    """NGL station availability metadata used for AOI filtering."""
+
+    station_id: str
+    latitude: float
+    longitude: float
+    start: date
+    end: date
+    n_epochs: int
 
 
 @dataclass(frozen=True)
@@ -257,7 +270,7 @@ def download_ngl_station(
         ) from exc
 
     site = station_id.upper()
-    url = f"{NGL_TENV3_BASE_URL}/{reference_frame}/{site}.tenv3"
+    url = ngl_tenv3_url(site, reference_frame=reference_frame)
     out_dir = Path(destination)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{site}.tenv3"
@@ -265,6 +278,123 @@ def download_ngl_station(
     response.raise_for_status()
     out_path.write_bytes(response.content)
     return out_path
+
+
+def ngl_tenv3_url(station_id: str, *, reference_frame: str = "IGS20") -> str:
+    """Return the current NGL final-solution tenv3 URL for a station."""
+    site = station_id.upper()
+    frame = reference_frame.upper()
+    if frame in {"IGS20", "IGS14"}:
+        return f"{NGL_TENV3_BASE_URL}/IGS20/{site}.tenv3"
+    return f"{NGL_TENV3_BASE_URL}/{frame}/{site}.{frame}.tenv3"
+
+
+def download_station_holdings(
+    destination: str | Path,
+    *,
+    url: str = NGL_DATAHOLDINGS_URL,
+    fetcher: object | None = None,
+) -> Path:
+    """Download NGL DataHoldings.txt to ``destination``."""
+    out_path = Path(destination)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if fetcher is None:
+        try:
+            import requests  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError(
+                "download_station_holdings requires requests; "
+                "install with `pip install -e .[io]`"
+            ) from exc
+        content = requests.get(url, timeout=60).content
+    else:
+        content = fetcher(url)  # type: ignore[operator]
+    out_path.write_bytes(content)
+    return out_path
+
+
+def parse_station_holdings(lines: Iterable[str]) -> list[StationHolding]:
+    """Parse a compact station-holdings table.
+
+    Accepted formats:
+
+    - Compact: ``station latitude longitude start end epochs``.
+    - Native NGL DataHoldings: ``Sta Lat Long Hgt X Y Z Dtbeg Dtend Dtmod NumSol ...``.
+    """
+    holdings: list[StationHolding] = []
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#") or line.lower().startswith("station"):
+            continue
+        parts = line.split()
+        if len(parts) < 6:
+            continue
+        try:
+            station_id, latitude, longitude, start, end, n_epochs = _parse_holding_parts(parts)
+            holdings.append(
+                StationHolding(
+                    station_id=station_id,
+                    latitude=latitude,
+                    longitude=longitude,
+                    start=start,
+                    end=end,
+                    n_epochs=n_epochs,
+                )
+            )
+        except ValueError:
+            continue
+    return holdings
+
+
+def _parse_holding_parts(parts: list[str]) -> tuple[str, float, float, date, date, int]:
+    station_id = parts[0].upper()
+    latitude = float(parts[1])
+    longitude = _normalize_longitude(float(parts[2]))
+
+    if len(parts) >= 11:
+        try:
+            return (
+                station_id,
+                latitude,
+                longitude,
+                date.fromisoformat(parts[7]),
+                date.fromisoformat(parts[8]),
+                int(parts[10]),
+            )
+        except ValueError:
+            pass
+
+    return (
+        station_id,
+        latitude,
+        longitude,
+        date.fromisoformat(parts[3]),
+        date.fromisoformat(parts[4]),
+        int(parts[5]),
+    )
+
+
+def _normalize_longitude(value: float) -> float:
+    return value - 360.0 if value > 180.0 else value
+
+
+def select_stations_for_aoi(
+    holdings: Iterable[StationHolding],
+    bbox: object,
+    *,
+    start: date,
+    end: date,
+    min_epochs: int = 200,
+) -> list[StationHolding]:
+    """Filter station holdings by AOI, temporal coverage, and epoch count."""
+    selected = []
+    for station in holdings:
+        inside = bool(bbox.contains(station.longitude, station.latitude))  # type: ignore[attr-defined]
+        covers_window = station.start <= start and station.end >= end
+        enough_epochs = station.n_epochs >= int(min_epochs)
+        if inside and covers_window and enough_epochs:
+            selected.append(station)
+    return sorted(selected, key=lambda item: item.station_id)
 
 
 def _parse_yymmmdd(token: str) -> date:

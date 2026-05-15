@@ -8,11 +8,16 @@ from disp_s1_eval.gnss import (
     collocate_gaussian,
     collocate_nearest,
     collocate_weighted_window,
+    download_station_holdings,
+    ngl_tenv3_url,
     parse_tenv3,
+    parse_station_holdings,
     project_enu_covariance_to_los,
     project_enu_to_los,
     resolve_collocation,
+    select_stations_for_aoi,
 )
+from disp_s1_eval.processors import BBox
 
 
 _SAMPLE_TENV3 = (
@@ -112,3 +117,86 @@ def test_resolve_collocation_returns_correct_function():
     assert resolve_collocation("nearest") is collocate_nearest
     assert resolve_collocation("weighted_window") is collocate_weighted_window
     assert resolve_collocation(CollocationStrategy.GAUSSIAN_SMOOTHING) is collocate_gaussian
+
+
+def test_parse_station_holdings_reads_station_coordinates_and_epoch_count():
+    holdings = parse_station_holdings(
+        [
+            "# station latitude longitude start end epochs\n",
+            "P056 36.5000 -120.1000 2018-01-01 2023-12-31 2000\n",
+            "ABCD 40.0000 -118.0000 2020-01-01 2020-12-31 250\n",
+        ]
+    )
+
+    assert len(holdings) == 2
+    assert holdings[0].station_id == "P056"
+    assert holdings[0].latitude == pytest.approx(36.5)
+    assert holdings[0].longitude == pytest.approx(-120.1)
+    assert holdings[0].n_epochs == 2000
+
+
+def test_parse_station_holdings_reads_native_ngl_dataholdings_format():
+    holdings = parse_station_holdings(
+        [
+            "Sta Lat(deg) Long(deg) Hgt(m) X(m) Y(m) Z(m) Dtbeg Dtend Dtmod NumSol StaOrigName\n",
+            "P056 36.1234 -120.1234 100.0 -1 -2 -3 2018-01-01 2026-05-02 2026-05-10 2500\n",
+        ]
+    )
+
+    assert len(holdings) == 1
+    assert holdings[0].station_id == "P056"
+    assert holdings[0].latitude == pytest.approx(36.1234)
+    assert holdings[0].longitude == pytest.approx(-120.1234)
+    assert holdings[0].start == date(2018, 1, 1)
+    assert holdings[0].end == date(2026, 5, 2)
+    assert holdings[0].n_epochs == 2500
+
+
+def test_parse_station_holdings_normalizes_0_360_longitudes():
+    holdings = parse_station_holdings(
+        [
+            "P056 36.1234 239.8766 2018-01-01 2026-05-02 2500\n",
+        ]
+    )
+
+    assert holdings[0].longitude == pytest.approx(-120.1234)
+
+
+def test_download_station_holdings_writes_fetcher_content(tmp_path):
+    path = download_station_holdings(
+        tmp_path / "DataHoldings.txt",
+        fetcher=lambda url: b"Sta Lat(deg) Long(deg)\n",
+    )
+
+    assert path.exists()
+    assert "Sta Lat" in path.read_text(encoding="utf-8")
+
+
+def test_ngl_tenv3_url_uses_current_igs20_layout():
+    assert ngl_tenv3_url("P056", reference_frame="IGS20") == (
+        "https://geodesy.unr.edu/gps_timeseries/IGS20/tenv3/IGS20/P056.tenv3"
+    )
+    assert ngl_tenv3_url("P056", reference_frame="NA") == (
+        "https://geodesy.unr.edu/gps_timeseries/IGS20/tenv3/NA/P056.NA.tenv3"
+    )
+
+
+def test_select_stations_for_aoi_filters_by_bounds_time_and_epochs():
+    holdings = parse_station_holdings(
+        [
+            "KEEP 36.0 -120.0 2018-01-01 2023-12-31 2000\n",
+            "OUTS 38.0 -120.0 2018-01-01 2023-12-31 2000\n",
+            "TIME 36.1 -120.1 2010-01-01 2011-01-01 2000\n",
+            "EPOC 36.2 -120.2 2018-01-01 2023-12-31 50\n",
+        ]
+    )
+
+    selected = select_stations_for_aoi(
+        holdings,
+        BBox(west=-121.0, south=35.0, east=-119.0, north=37.0),
+        start=date(2018, 1, 1),
+        end=date(2023, 12, 31),
+        min_epochs=200,
+    )
+
+    assert [station.station_id for station in selected] == ["KEEP"]

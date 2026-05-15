@@ -129,12 +129,11 @@ class OperaDispS1Reader(DeformationProductReader):
 
         first_path, _ = self._parsed[0]
         with xr.open_dataset(first_path, decode_times=True) as ds:
-            longitude = self._coord_array(ds, ("longitude", "lon", "x"))
-            latitude = self._coord_array(ds, ("latitude", "lat", "y"))
-            lat_slice, lon_slice = select_aoi_indices(longitude, latitude, aoi)
+            grid = self._grid_for_aoi(ds, aoi)
+            lat_slice, lon_slice = grid["lat_slice"], grid["lon_slice"]
             geometry = self._read_geometry(ds, lat_slice, lon_slice)
-            sample_lon = np.asarray(longitude[lon_slice], dtype=float)
-            sample_lat = np.asarray(latitude[lat_slice], dtype=float)
+            sample_lon = np.asarray(grid["longitude"], dtype=float)
+            sample_lat = np.asarray(grid["latitude"], dtype=float)
 
         dates: list[date] = []
         displacement_stack: list[np.ndarray] = []
@@ -204,10 +203,18 @@ class OperaDispS1Reader(DeformationProductReader):
         e = -np.sin(scalar_inc) * np.cos(scalar_head - 1.5 * np.pi)
         n = np.sin(scalar_inc) * np.sin(scalar_head - 1.5 * np.pi)
         u = np.cos(scalar_inc)
-        los_unit = np.array([e, n, u]).reshape(3, 1, 1)
+        shape = (_slice_length(lat_slice), _slice_length(lon_slice))
+        los_unit = np.stack(
+            [
+                np.full(shape, e, dtype=float),
+                np.full(shape, n, dtype=float),
+                np.full(shape, u, dtype=float),
+            ],
+            axis=0,
+        )
         return LOSGeometry(
-            incidence=np.array(scalar_inc),
-            heading=np.array(scalar_head),
+            incidence=np.full(shape, scalar_inc, dtype=float),
+            heading=np.full(shape, scalar_head, dtype=float),
             los_unit=los_unit,
         )
 
@@ -240,9 +247,92 @@ class OperaDispS1Reader(DeformationProductReader):
                 return np.asarray(ds[name].values, dtype=float)
         raise KeyError(f"none of {tuple(candidates)} found in dataset coordinates")
 
+    @classmethod
+    def _grid_for_aoi(cls, ds: Any, aoi: BBox) -> dict[str, Any]:
+        if ("longitude" in ds.coords or "longitude" in ds.variables or "lon" in ds.coords or "lon" in ds.variables) and (
+            "latitude" in ds.coords or "latitude" in ds.variables or "lat" in ds.coords or "lat" in ds.variables
+        ):
+            longitude = cls._coord_array(ds, ("longitude", "lon"))
+            latitude = cls._coord_array(ds, ("latitude", "lat"))
+            lat_slice, lon_slice = select_aoi_indices(longitude, latitude, aoi)
+            return {
+                "lat_slice": lat_slice,
+                "lon_slice": lon_slice,
+                "longitude": longitude[lon_slice],
+                "latitude": latitude[lat_slice],
+            }
+
+        x = cls._coord_array(ds, ("x",))
+        y = cls._coord_array(ds, ("y",))
+        x_slice, y_slice = cls._projected_aoi_slices(ds, x, y, aoi)
+        sample_x = np.asarray(x[x_slice], dtype=float)
+        sample_y = np.asarray(y[y_slice], dtype=float)
+        center_y = float(sample_y[sample_y.size // 2])
+        center_x = float(sample_x[sample_x.size // 2])
+        longitude = cls._transform_xy_to_lonlat(ds, sample_x, np.full(sample_x.shape, center_y))[0]
+        latitude = cls._transform_xy_to_lonlat(ds, np.full(sample_y.shape, center_x), sample_y)[1]
+        return {
+            "lat_slice": y_slice,
+            "lon_slice": x_slice,
+            "longitude": longitude,
+            "latitude": latitude,
+        }
+
+    @classmethod
+    def _projected_aoi_slices(
+        cls,
+        ds: Any,
+        x: np.ndarray,
+        y: np.ndarray,
+        aoi: BBox,
+    ) -> tuple[slice, slice]:
+        xs, ys = cls._transform_lonlat_to_xy(
+            ds,
+            np.asarray([aoi.west, aoi.west, aoi.east, aoi.east], dtype=float),
+            np.asarray([aoi.south, aoi.north, aoi.south, aoi.north], dtype=float),
+        )
+        x_inside = np.flatnonzero((x >= np.nanmin(xs)) & (x <= np.nanmax(xs)))
+        y_inside = np.flatnonzero((y >= np.nanmin(ys)) & (y <= np.nanmax(ys)))
+        if x_inside.size == 0 or y_inside.size == 0:
+            raise ValueError("AOI does not intersect the product grid")
+        return (
+            slice(int(x_inside[0]), int(x_inside[-1]) + 1),
+            slice(int(y_inside[0]), int(y_inside[-1]) + 1),
+        )
+
+    @staticmethod
+    def _transform_lonlat_to_xy(ds: Any, longitude: np.ndarray, latitude: np.ndarray):
+        try:
+            from pyproj import CRS, Transformer  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError(
+                "Projected OPERA grids require pyproj; install with `pip install -e .[io]`"
+            ) from exc
+        crs = CRS.from_wkt(ds["spatial_ref"].attrs["crs_wkt"])
+        transformer = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+        return transformer.transform(longitude.tolist(), latitude.tolist())
+
+    @staticmethod
+    def _transform_xy_to_lonlat(ds: Any, x: np.ndarray, y: np.ndarray):
+        try:
+            from pyproj import CRS, Transformer  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError(
+                "Projected OPERA grids require pyproj; install with `pip install -e .[io]`"
+            ) from exc
+        crs = CRS.from_wkt(ds["spatial_ref"].attrs["crs_wkt"])
+        transformer = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+        return transformer.transform(x.tolist(), y.tolist())
+
 
 def _secondary_datetime_to_date(value: str) -> date:
     return datetime.strptime(value, "%Y%m%dT%H%M%SZ").date()
+
+
+def _slice_length(value: slice) -> int:
+    if value.start is None or value.stop is None:
+        raise ValueError("slice length requires bounded start and stop")
+    return max(0, int(value.stop) - int(value.start))
 
 
 def _factory(**kwargs: Any) -> OperaDispS1Reader:

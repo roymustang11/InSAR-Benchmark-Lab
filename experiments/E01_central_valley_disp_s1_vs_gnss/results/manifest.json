@@ -1,0 +1,138 @@
+{
+  "config": {
+    "collocation": {
+      "max_offset_days": 3,
+      "strategy": "nearest"
+    },
+    "gnss": {
+      "cache_dir": "data/raw/ngl/central_valley",
+      "holdings_path": "data/raw/ngl/central_valley_holdings.txt",
+      "holdings_url": "https://geodesy.unr.edu/NGLStationPages/DataHoldings.txt",
+      "min_epochs": 200,
+      "reference_frame": "IGS20",
+      "source": "NGL",
+      "stations": [
+        "CRBT",
+        "JLN5",
+        "LOWS",
+        "P284",
+        "P285"
+      ]
+    },
+    "masking": {
+      "coherence_threshold": 0.5,
+      "neighborhood_size": 3
+    },
+    "name": "E01 Central Valley DISP-S1 vs GNSS",
+    "processor": {
+      "apply_atmospheric_correction": true,
+      "cache_dir": "data/raw/opera/disp_s1/central_valley",
+      "frame_id": "F09155",
+      "name": "opera_disp_s1",
+      "polarization_filter": "VV",
+      "search_limit": 12,
+      "use_existing": false
+    },
+    "random_seed": 20240101,
+    "reference_point_bootstrap": {
+      "n_draws": 200,
+      "quantile_high": 0.975,
+      "quantile_low": 0.025
+    },
+    "slug": "E01_central_valley_disp_s1_vs_gnss",
+    "study_area": {
+      "region": {
+        "east": -119.0,
+        "north": 37.0,
+        "south": 35.0,
+        "west": -121.0
+      },
+      "stable_subwindow": {
+        "end": "2018-06-30",
+        "start": "2018-01-01"
+      },
+      "time_window": {
+        "end": "2023-12-31",
+        "start": "2018-01-01"
+      }
+    }
+  },
+  "config_path": "experiments/E01_central_valley_disp_s1_vs_gnss/config.yml",
+  "config_sha256": "233b70aa693c0300ec61e7ef264f4681f4b11718f6187ebd9bf6398c6feb86ab",
+  "experiment": "E01_central_valley_disp_s1_vs_gnss",
+  "framework_version": "0.2.0",
+  "inputs": {
+    "gnss_stations": [
+      {
+        "latitude": 35.7916,
+        "longitude": -120.7508,
+        "sha256": "ba80faa2887edc4f727ce6bc564778ab44140a5223430ffbe27ff1f7f22c7f33",
+        "station_id": "CRBT",
+        "tenv3_path": "data/raw/ngl/central_valley/CRBT.tenv3"
+      },
+      {
+        "latitude": 35.8732,
+        "longitude": -120.8329,
+        "sha256": "25ca6b413e6844f4a3422be8dcae60a4d698be05d1b1db29d6dc1e4a3ce5e626",
+        "station_id": "JLN5",
+        "tenv3_path": "data/raw/ngl/central_valley/JLN5.tenv3"
+      },
+      {
+        "latitude": 35.8287,
+        "longitude": -120.5943,
+        "sha256": "e245ebcbc69a4ae37b8c1f3375e94955555381decb31576d4c49749e34cabc73",
+        "station_id": "LOWS",
+        "tenv3_path": "data/raw/ngl/central_valley/LOWS.tenv3"
+      },
+      {
+        "latitude": 35.9333,
+        "longitude": -120.9068,
+        "sha256": "5e97c4900cab14f2ee671c0224b06f183a05ee4bbbd0b9bdc5e5dfe4d0177a2c",
+        "station_id": "P284",
+        "tenv3_path": "data/raw/ngl/central_valley/P284.tenv3"
+      },
+      {
+        "latitude": 36.4172,
+        "longitude": -120.98150000000001,
+        "sha256": "f8a648f582336854b4f9f0c53b9a3edddda4fd112809c601f82091b2ff3ab5cc",
+        "station_id": "P285",
+        "tenv3_path": "data/raw/ngl/central_valley/P285.tenv3"
+      }
+    ],
+    "opera_granules": [
+      {
+        "path": "data/raw/opera/disp_s1/central_valley/OPERA_L3_DISP-S1_IW_F09155_VV_20170823T020611Z_20180207T020610Z_v1.0_20250409T004744Z.nc",
+        "sha256": "f4bf1172464eb2ee89a045e2c14d372550c23fdd441d773cee9a9ee84820ee09"
+      },
+      {
+        "path": "data/raw/opera/disp_s1/central_valley/OPERA_L3_DISP-S1_IW_F09155_VV_20170823T020611Z_20180408T020611Z_v1.0_20250409T004744Z.nc",
+        "sha256": "82f53412c3f8cf7004cf0fb2d26b3a3c2bc5d045b92047a3be10a35905916389"
+      }
+    ]
+  },
+  "outputs": {
+    ".gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aggregate.json": "06edd41d3eb50d1da4b3570b2b833cd21d8b3207a711de2f46c17b6b7d9e0fde",
+    "figures/residual_histogram.png": "7001d8e834c526477ae231d5c4b999957b0fc96555ad3c16295259736963ec65",
+    "figures/residual_variogram.png": "40b09395a09c2e453d161e0c879309e52408670f8ae5c95b03fb090664db61db",
+    "figures/station_CRBT_timeseries.png": "be7786967c86390df2a8ab26ef4a371326d2230e57b80b386724553c9e26e681",
+    "figures/station_JLN5_timeseries.png": "256eaaa596117fb4ded66c14961e739f2b7330efac71ef6d4b5858e5f00b6748",
+    "figures/station_LOWS_timeseries.png": "734b62ccdf140a0a6239b4644f878f75b7df36631acd530f43b411afe1e50b53",
+    "figures/station_P284_timeseries.png": "f17b998e60ddc84414715aebe497df157336556fdb0c07667a74b6bdd6564eba",
+    "figures/station_P285_timeseries.png": "1f1df70a6cb682e141cfa1f825833c9dbb9d22bff91ac0f351d7c338fb597eb8",
+    "gnss_station_inventory.csv": "06414402745eb389387b4bc4b40c1d227bbfa9d5a8de124d4d3916daa8eb52ff",
+    "opera_inventory.json": "6f8c37c4f41eae66aca93055daec1996c765cdb4f82d26336c3e79b29cf6cd9d",
+    "per_station.csv": "a2f6ed31e75c7d1b8ae6e7df2ae217a8e137c1938f293f898fae28e5162183e7",
+    "skipped_stations.csv": "e69c3afd2f03942df55124d380bc346487f33485249f847de14450a9816d8a39",
+    "station_timeseries/CRBT.csv": "aa098935c84d0b698ddd1cf92c6deb86a42f5ab609ed964daff1206b734b1d6d",
+    "station_timeseries/JLN5.csv": "8aaa9aa158a5d50cc2003354a9f3378d35822a894b84236144a994b13c58226c",
+    "station_timeseries/LOWS.csv": "e05f31e213e251c1ea1829381109b86f0f471f95413336c5831bd3e9dd899606",
+    "station_timeseries/P284.csv": "1c6aaa5d217c36d3d98312077f7ecff923509a4a8678931129722b72cfbe753c",
+    "station_timeseries/P285.csv": "82d1d77a020f217222bd6289c871bbe0d86f6a374835a18ad870e54738147641",
+    "summary.md": "49dd7b6bbaa1cf06c48e2ce3f52123fdba9149b1e31da9f6f3921a54945ca609"
+  },
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "python_version": "3.12.2",
+  "run_mode": "wet",
+  "started_at_utc": "2026-05-15T14:57:27+00:00"
+}

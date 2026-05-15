@@ -24,7 +24,7 @@ keywords = [
   "remote-sensing"
 ]
 dependencies = [
-  "numpy>=1.24",
+  "numpy>=1.24,<2.0",
   "PyYAML>=6.0"
 ]
 
@@ -36,6 +36,7 @@ io = [
   "xarray>=2023.10",
   "h5py>=3.9",
   "netCDF4>=1.6",
+  "pyproj>=3.6",
   "zarr>=2.16",
   "pandas>=2.0",
   "requests>=2.31"

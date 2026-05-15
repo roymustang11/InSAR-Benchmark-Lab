@@ -1,0 +1,32 @@
+{
+  "granules": [
+    {
+      "extension": ".nc",
+      "frame_id": "F09155",
+      "mode": "IW",
+      "path": "data/raw/opera/disp_s1/central_valley/OPERA_L3_DISP-S1_IW_F09155_VV_20170823T020611Z_20180207T020610Z_v1.0_20250409T004744Z.nc",
+      "polarization": "VV",
+      "processing_datetime": "20250409T004744Z",
+      "product_version": "v1.0",
+      "reference_datetime": "20170823T020611Z",
+      "secondary_datetime": "20180207T020610Z",
+      "sha256": "f4bf1172464eb2ee89a045e2c14d372550c23fdd441d773cee9a9ee84820ee09",
+      "short_name": "OPERA_L3_DISP-S1_V1",
+      "size_bytes": 197132288
+    },
+    {
+      "extension": ".nc",
+      "frame_id": "F09155",
+      "mode": "IW",
+      "path": "data/raw/opera/disp_s1/central_valley/OPERA_L3_DISP-S1_IW_F09155_VV_20170823T020611Z_20180408T020611Z_v1.0_20250409T004744Z.nc",
+      "polarization": "VV",
+      "processing_datetime": "20250409T004744Z",
+      "product_version": "v1.0",
+      "reference_datetime": "20170823T020611Z",
+      "secondary_datetime": "20180408T020611Z",
+      "sha256": "82f53412c3f8cf7004cf0fb2d26b3a3c2bc5d045b92047a3be10a35905916389",
+      "short_name": "OPERA_L3_DISP-S1_V1",
+      "size_bytes": 197132288
+    }
+  ]
+}

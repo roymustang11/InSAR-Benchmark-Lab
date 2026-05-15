@@ -68,9 +68,16 @@ def test_e01_wet_run_writes_real_artifacts_from_local_fixtures(tmp_path):
     assert (output / "per_station.csv").exists()
     assert (output / "skipped_stations.csv").exists()
     assert (output / "aggregate.json").exists()
+    assert (output / "sensitivity.json").exists()
     assert (output / "station_timeseries" / "TEST.csv").exists()
     assert (output / "figures" / "station_TEST_timeseries.png").exists()
     assert (output / "figures" / "residual_histogram.png").exists()
+    assert (output / "figures" / "opera_displacement_map.png").exists()
+    assert (output / "figures" / "opera_coherence_map.png").exists()
+    assert (output / "figures" / "station_coverage_map.png").exists()
+    assert (output / "figures" / "station_residual_map.png").exists()
+    assert (output / "figures" / "multi_station_timeseries.png").exists()
+    assert (output / "figures" / "sensitivity_summary.png").exists()
 
     manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["run_mode"] == "wet"
@@ -78,12 +85,25 @@ def test_e01_wet_run_writes_real_artifacts_from_local_fixtures(tmp_path):
     assert manifest["inputs"]["gnss_stations"][0]["station_id"] == "TEST"
 
     aggregate = json.loads((output / "aggregate.json").read_text(encoding="utf-8"))
+    assert aggregate["n_epochs"] == 3
     assert aggregate["n_stations"] == 1
     assert aggregate["n_collocated_pairs"] == 3
+    assert aggregate["median_abs_residual_mm"] < 2.0
+    assert aggregate["station_rmse_median_mm"] < 2.0
     assert aggregate["rmse_mm"] < 2.0
+    assert aggregate["bootstrap"]["rmse_mm"]["upper"] >= aggregate["bootstrap"]["rmse_mm"]["lower"]
+    sensitivity = json.loads((output / "sensitivity.json").read_text(encoding="utf-8"))
+    variants = {row["variant"] for row in sensitivity["variants"]}
+    assert {
+        "primary",
+        "collocation_weighted_window",
+        "collocation_gaussian_smoothing",
+        "coherence_threshold_0.7",
+        "reference_stable_window",
+    }.issubset(variants)
 
     per_station = (output / "per_station.csv").read_text(encoding="utf-8")
-    assert "station_id,n_pairs,rmse_mm,mae_mm,bias_mm" in per_station
+    assert "insar_trend_mm_per_year,gnss_trend_mm_per_year,trend_difference_mm_per_year" in per_station
     assert "TEST,3," in per_station
 
 
@@ -403,6 +423,65 @@ def test_e01_station_inventory_only_writes_filtered_station_csv(tmp_path):
     assert "station_id,latitude,longitude,start,end,n_epochs" in station_inventory
     assert "KEEP,36.0000,-120.0000,2018-01-01,2026-05-02,2500" in station_inventory
     assert "OUTS" not in station_inventory
+
+
+def test_e01_coverage_only_writes_station_coverage_table(tmp_path):
+    xr = pytest.importorskip("xarray")
+
+    granule_paths = _write_opera_fixture_granules(tmp_path, xr)
+    holdings_path = tmp_path / "holdings.txt"
+    holdings_path.write_text(
+        "\n".join(
+            [
+                "INSI 36.0 -120.0 2018-01-01 2018-01-31 20",
+                "MISS 36.8 -120.8 2018-01-01 2018-01-31 20",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    config = {
+        "name": "E01 Coverage Fixture",
+        "slug": "E01_coverage_fixture",
+        "study_area": {
+            "region": {"west": -120.9, "south": 35.8, "east": -119.8, "north": 36.9},
+            "time_window": {"start": "2018-01-01", "end": "2018-01-31"},
+        },
+        "processor": {
+            "name": "opera_disp_s1",
+            "granule_paths": [str(path) for path in granule_paths],
+            "apply_atmospheric_correction": False,
+            "polarization_filter": "VV",
+        },
+        "gnss": {
+            "source": "NGL",
+            "reference_frame": "IGS20",
+            "holdings_path": str(holdings_path),
+            "min_epochs": 1,
+            "stations": [],
+        },
+        "collocation": {"strategy": "nearest", "max_offset_days": 3},
+        "masking": {"neighborhood_size": 1},
+    }
+    config_path = tmp_path / "config.yml"
+    config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    output = tmp_path / "results"
+
+    exit_code = main(
+        [
+            "--config",
+            str(config_path),
+            "--output",
+            str(output),
+            "--coverage-only",
+        ]
+    )
+
+    assert exit_code == 0
+    coverage = (output / "station_coverage.csv").read_text(encoding="utf-8")
+    assert "station_id,latitude,longitude,total_pixels,valid_pixels,status" in coverage
+    assert "INSI,36.0000,-120.0000,1,1,covered" in coverage
+    assert "MISS,36.8000,-120.8000,1,0,outside_product_grid" in coverage
 
 
 def test_e01_gnss_download_only_writes_station_inventory_from_cached_tenv3(tmp_path):

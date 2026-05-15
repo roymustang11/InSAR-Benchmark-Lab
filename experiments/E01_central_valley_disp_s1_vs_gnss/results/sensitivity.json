@@ -1,0 +1,74 @@
+{
+  "variants": [
+    {
+      "bias_mm": -8.77213254024815e-17,
+      "mae_mm": 20.99555025918045,
+      "median_abs_residual_mm": 18.939314543597035,
+      "n_collocated_pairs": 243,
+      "n_skipped_stations": 0,
+      "n_stations": 21,
+      "rmse_mm": 25.581674696167887,
+      "variant": "primary"
+    },
+    {
+      "bias_mm": 1.3050784942532453e-15,
+      "mae_mm": 21.239517367389457,
+      "median_abs_residual_mm": 18.320845706850868,
+      "n_collocated_pairs": 245,
+      "n_skipped_stations": 0,
+      "n_stations": 21,
+      "rmse_mm": 25.780203501933297,
+      "variant": "collocation_weighted_window"
+    },
+    {
+      "bias_mm": -5.199093188488538e-16,
+      "mae_mm": 21.354909622554207,
+      "median_abs_residual_mm": 18.40561446454003,
+      "n_collocated_pairs": 246,
+      "n_skipped_stations": 0,
+      "n_stations": 21,
+      "rmse_mm": 25.808525089723837,
+      "variant": "collocation_gaussian_smoothing"
+    },
+    {
+      "bias_mm": -6.27788762518964e-16,
+      "mae_mm": 21.601635148835015,
+      "median_abs_residual_mm": 19.3643658552359,
+      "n_collocated_pairs": 249,
+      "n_skipped_stations": 0,
+      "n_stations": 21,
+      "rmse_mm": 26.23275387989493,
+      "variant": "coherence_threshold_0.3"
+    },
+    {
+      "bias_mm": -8.77213254024815e-17,
+      "mae_mm": 20.99555025918045,
+      "median_abs_residual_mm": 18.939314543597035,
+      "n_collocated_pairs": 243,
+      "n_skipped_stations": 0,
+      "n_stations": 21,
+      "rmse_mm": 25.581674696167887,
+      "variant": "coherence_threshold_0.5"
+    },
+    {
+      "bias_mm": 9.416831437784461e-16,
+      "mae_mm": 20.539885583846164,
+      "median_abs_residual_mm": 18.537848036030404,
+      "n_collocated_pairs": 166,
+      "n_skipped_stations": 5,
+      "n_stations": 16,
+      "rmse_mm": 25.047546063744417,
+      "variant": "coherence_threshold_0.7"
+    },
+    {
+      "bias_mm": 8.205298918455664,
+      "mae_mm": 22.111123617892126,
+      "median_abs_residual_mm": 17.832346096179492,
+      "n_collocated_pairs": 243,
+      "n_skipped_stations": 0,
+      "n_stations": 21,
+      "rmse_mm": 27.961941686191278,
+      "variant": "reference_stable_window"
+    }
+  ]
+}

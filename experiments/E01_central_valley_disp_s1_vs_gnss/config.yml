@@ -18,7 +18,7 @@ processor:
   apply_atmospheric_correction: true
   polarization_filter: VV
   cache_dir: data/raw/opera/disp_s1/central_valley
-  search_limit: 12
+  search_limit: 250
   use_existing: false
 gnss:
   source: NGL
@@ -33,6 +33,22 @@ gnss:
     - LOWS
     - P284
     - P285
+    - P287
+    - P288
+    - P289
+    - P290
+    - P291
+    - P295
+    - P523
+    - P525
+    - P526
+    - P527
+    - P528
+    - P576
+    - PEA1
+    - PEA2
+    - SHP5
+    - USLO
 collocation:
   strategy: nearest
   max_offset_days: 3

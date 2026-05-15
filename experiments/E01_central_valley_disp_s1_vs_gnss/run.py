@@ -12,6 +12,7 @@ is reproducible and auditable from a single command.
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import hashlib
 import json
@@ -84,6 +85,11 @@ def main(argv: list[str] | None = None) -> int:
         "--gnss-download-only",
         action="store_true",
         help="Resolve/download NGL tenv3 files and emit station inventory without OPERA processing.",
+    )
+    parser.add_argument(
+        "--coverage-only",
+        action="store_true",
+        help="Intersect selected GNSS stations with OPERA valid pixels and emit station_coverage.csv.",
     )
     parser.add_argument(
         "--use-existing",
@@ -166,6 +172,24 @@ def main(argv: list[str] | None = None) -> int:
         _write_summary(output_dir / "summary.md", config, mode="gnss_download_only")
         return 0
 
+    if args.coverage_only:
+        coverage = build_station_coverage_table(
+            config,
+            use_existing=args.use_existing,
+            limit_granules=args.limit_granules,
+            limit_stations=args.limit_stations,
+        )
+        _write_station_coverage(output_dir / "station_coverage.csv", coverage)
+        manifest["run_mode"] = "coverage_only"
+        manifest["inputs"] = {
+            "n_stations_checked": len(coverage),
+            "n_covered_stations": sum(row["status"] == "covered" for row in coverage),
+        }
+        manifest["outputs"] = _output_checksums(output_dir)
+        _write_manifest(output_dir / "manifest.json", manifest)
+        _write_summary(output_dir / "summary.md", config, mode="coverage_only")
+        return 0
+
     if args.download_only:
         paths = resolve_opera_granule_paths(
             config,
@@ -234,6 +258,7 @@ def _write_summary(path: Path, config: dict[str, Any], *, mode: str) -> None:
         "search_only": "live OPERA metadata search; no product download or station validation.",
         "station_inventory_only": "GNSS station inventory; no product download or station validation.",
         "gnss_download_only": "GNSS station download/cache preparation; no OPERA processing.",
+        "coverage_only": "GNSS station coverage audit against OPERA valid pixels; no station validation.",
         "download_only": "OPERA product download/cache preparation; no station validation.",
         "wet": "full validation run.",
     }
@@ -285,6 +310,7 @@ def _run_wet(
     per_station: list[dict[str, Any]] = []
     skipped_stations: list[dict[str, str]] = []
     residual_records: list[tuple[float, float, float]] = []
+    station_series_by_id: dict[str, list[dict[str, Any]]] = {}
 
     for station in stations:
         try:
@@ -295,6 +321,7 @@ def _run_wet(
             )
             continue
         per_station.append(record)
+        station_series_by_id[str(station["station_id"])] = series_rows
         residual_records.extend(
             (
                 float(station["longitude"]),
@@ -319,10 +346,24 @@ def _run_wet(
 
     _write_per_station(output_dir / "per_station.csv", per_station)
     _write_skipped_stations(output_dir / "skipped_stations.csv", skipped_stations)
-    aggregate = _aggregate_metrics(per_station, residual_records)
+    aggregate = _aggregate_metrics(per_station, residual_records, n_epochs=len(sample.dates))
     aggregate["n_skipped_stations"] = len(skipped_stations)
     aggregate["skipped_stations"] = skipped_stations
     _write_json(output_dir / "aggregate.json", aggregate)
+    sensitivity = _build_sensitivity_summary(config, sample, stations)
+    _write_json(output_dir / "sensitivity.json", sensitivity)
+    _write_opera_displacement_map(output_dir / "figures" / "opera_displacement_map.png", sample)
+    _write_opera_coherence_map(output_dir / "figures" / "opera_coherence_map.png", sample)
+    _write_station_coverage_map(output_dir / "figures" / "station_coverage_map.png", per_station)
+    _write_station_residual_map(output_dir / "figures" / "station_residual_map.png", per_station)
+    _write_multi_station_timeseries(
+        output_dir / "figures" / "multi_station_timeseries.png",
+        station_series_by_id,
+    )
+    _write_sensitivity_summary_figure(
+        output_dir / "figures" / "sensitivity_summary.png",
+        sensitivity,
+    )
     _write_residual_histogram(output_dir / "figures" / "residual_histogram.png", residual_records)
     _write_variogram_figure(output_dir / "figures" / "residual_variogram.png", aggregate)
 
@@ -590,6 +631,49 @@ def select_e01_station_inventory(
     return _select_e01_station_inventory(config, limit_stations=limit_stations)
 
 
+def build_station_coverage_table(
+    config: dict[str, Any],
+    *,
+    use_existing: bool = False,
+    limit_granules: int | None = None,
+    limit_stations: int | None = None,
+) -> list[dict[str, Any]]:
+    bbox = _bbox_from_config(config)
+    granule_paths = resolve_opera_granule_paths(
+        config,
+        use_existing=use_existing,
+        limit_granules=limit_granules,
+    )
+    sample = _load_opera_sample(config, bbox, granule_paths)
+    stations = select_e01_station_inventory(config, limit_stations=limit_stations)
+    rows = []
+    for station in stations:
+        if not _station_inside_sample_extent(sample, station.longitude, station.latitude):
+            n_total = 1
+            n_valid = 0
+            status = "outside_product_grid"
+        else:
+            y_idx, x_idx = _nearest_pixel(sample, station.longitude, station.latitude)
+            y_slice, x_slice = _station_pixel_window(config, sample, y_idx, x_idx)
+            values = sample.displacement[:, y_slice, x_slice]
+            valid_pixels = np.isfinite(values).all(axis=0)
+            n_total = int(valid_pixels.size)
+            n_valid = int(valid_pixels.sum())
+            required = int(np.ceil(n_total / 2.0))
+            status = "covered" if n_valid >= required else "insufficient_valid_pixels"
+        rows.append(
+            {
+                "station_id": station.station_id,
+                "latitude": float(station.latitude),
+                "longitude": float(station.longitude),
+                "total_pixels": n_total,
+                "valid_pixels": n_valid,
+                "status": status,
+            }
+        )
+    return rows
+
+
 def _stations_from_resolved(config: dict[str, Any], resolved: list[dict[str, Any]]):
     holdings_by_id = {station.station_id: station for station in _read_holdings(config)}
     stations = []
@@ -645,13 +729,44 @@ def _write_station_inventory(path: Path, stations: list[Any]) -> None:
             )
 
 
+def _write_station_coverage(path: Path, rows: list[dict[str, Any]]) -> None:
+    fieldnames = [
+        "station_id",
+        "latitude",
+        "longitude",
+        "total_pixels",
+        "valid_pixels",
+        "status",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {
+                    "station_id": row["station_id"],
+                    "latitude": f"{float(row['latitude']):.4f}",
+                    "longitude": f"{float(row['longitude']):.4f}",
+                    "total_pixels": row["total_pixels"],
+                    "valid_pixels": row["valid_pixels"],
+                    "status": row["status"],
+                }
+            )
+
+
 def _evaluate_station(config: dict[str, Any], sample: Any, station: dict[str, Any]):
     y_idx, x_idx = _nearest_pixel(sample, station["longitude"], station["latitude"])
-    half_window = int(config.get("masking", {}).get("neighborhood_size", 1)) // 2
-    y_slice = slice(max(0, y_idx - half_window), min(sample.latitude.size, y_idx + half_window + 1))
-    x_slice = slice(max(0, x_idx - half_window), min(sample.longitude.size, x_idx + half_window + 1))
+    y_slice, x_slice = _station_pixel_window(config, sample, y_idx, x_idx)
 
-    insar_mm = np.nanmean(sample.displacement[:, y_slice, x_slice], axis=(1, 2))
+    displacement_window = np.asarray(sample.displacement[:, y_slice, x_slice], dtype=float)
+    displacement_window = _apply_coherence_threshold(
+        config,
+        sample,
+        displacement_window,
+        y_slice,
+        x_slice,
+    )
+    insar_mm = _nanmean_timeseries(displacement_window)
     sigma_mm = (
         np.nanmean(sample.uncertainty[:, y_slice, x_slice], axis=(1, 2))
         if sample.uncertainty is not None
@@ -695,7 +810,7 @@ def _evaluate_station(config: dict[str, Any], sample: Any, station: dict[str, An
     if np.count_nonzero(valid) < 2:
         raise ValueError(f"station {station['station_id']} has fewer than 2 collocated pairs")
 
-    offset = float(np.nanmean(insar_mm[valid] - collocated_gnss[valid]))
+    offset = _reference_offset(config, sample.dates, insar_mm, collocated_gnss, valid)
     aligned_insar = insar_mm - offset
     residual = aligned_insar - collocated_gnss
 
@@ -728,6 +843,8 @@ def _evaluate_station(config: dict[str, Any], sample: Any, station: dict[str, An
         "bias_mm": trend_bias(collocated_gnss[valid], aligned_insar[valid]),
         "correlation": correlation(collocated_gnss[valid], aligned_insar[valid]),
         "reference_offset_mm": offset,
+        "insar_trend_mm_per_year": _linear_trend_mm_per_year(sample.dates, aligned_insar, valid),
+        "gnss_trend_mm_per_year": _linear_trend_mm_per_year(sample.dates, collocated_gnss, valid),
         "uncertainty_coverage_1sigma": (
             uncertainty_coverage(
                 collocated_gnss[valid],
@@ -738,13 +855,105 @@ def _evaluate_station(config: dict[str, Any], sample: Any, station: dict[str, An
             else None
         ),
     }
+    if (
+        record["insar_trend_mm_per_year"] is not None
+        and record["gnss_trend_mm_per_year"] is not None
+    ):
+        record["trend_difference_mm_per_year"] = (
+            record["insar_trend_mm_per_year"] - record["gnss_trend_mm_per_year"]
+        )
+    else:
+        record["trend_difference_mm_per_year"] = None
     return record, rows
+
+
+def _apply_coherence_threshold(
+    config: dict[str, Any],
+    sample: Any,
+    displacement_window: np.ndarray,
+    y_slice: slice,
+    x_slice: slice,
+) -> np.ndarray:
+    threshold = config.get("masking", {}).get("coherence_threshold")
+    if threshold is None or sample.coherence is None:
+        return displacement_window
+    coherence = np.asarray(sample.coherence[:, y_slice, x_slice], dtype=float)
+    return np.where(coherence >= float(threshold), displacement_window, np.nan)
+
+
+def _nanmean_timeseries(values: np.ndarray) -> np.ndarray:
+    out = np.full(values.shape[0], np.nan, dtype=float)
+    for idx in range(values.shape[0]):
+        epoch = values[idx]
+        if np.isfinite(epoch).any():
+            out[idx] = float(np.nanmean(epoch))
+    return out
+
+
+def _reference_offset(
+    config: dict[str, Any],
+    dates: tuple[date, ...],
+    insar_mm: np.ndarray,
+    gnss_mm: np.ndarray,
+    valid: np.ndarray,
+) -> float:
+    alignment = config.get("reference_alignment", "all_epoch_mean")
+    if alignment == "stable_window":
+        subwindow = config.get("study_area", {}).get("stable_subwindow", {})
+        start = date.fromisoformat(subwindow["start"])
+        end = date.fromisoformat(subwindow["end"])
+        date_mask = np.asarray([start <= value <= end for value in dates], dtype=bool)
+        valid = valid & date_mask
+        if np.count_nonzero(valid) < 2:
+            raise ValueError("stable-window reference alignment has fewer than 2 pairs")
+    return float(np.nanmean(insar_mm[valid] - gnss_mm[valid]))
 
 
 def _nearest_pixel(sample: Any, longitude: float, latitude: float) -> tuple[int, int]:
     x_idx = int(np.argmin(np.abs(sample.longitude - float(longitude))))
     y_idx = int(np.argmin(np.abs(sample.latitude - float(latitude))))
     return y_idx, x_idx
+
+
+def _linear_trend_mm_per_year(
+    dates: list[date] | tuple[date, ...],
+    values: np.ndarray,
+    valid: np.ndarray,
+) -> float | None:
+    if np.count_nonzero(valid) < 3:
+        return None
+    valid_dates = [date_value for date_value, keep in zip(dates, valid, strict=True) if keep]
+    valid_values = np.asarray(values[valid], dtype=float)
+    years = np.asarray(
+        [(date_value - valid_dates[0]).days / 365.25 for date_value in valid_dates],
+        dtype=float,
+    )
+    if np.nanmax(years) == np.nanmin(years):
+        return None
+    slope, _intercept = np.polyfit(years, valid_values, deg=1)
+    return float(slope)
+
+
+def _station_inside_sample_extent(sample: Any, longitude: float, latitude: float) -> bool:
+    lon = float(longitude)
+    lat = float(latitude)
+    return (
+        float(np.nanmin(sample.longitude)) <= lon <= float(np.nanmax(sample.longitude))
+        and float(np.nanmin(sample.latitude)) <= lat <= float(np.nanmax(sample.latitude))
+    )
+
+
+def _station_pixel_window(
+    config: dict[str, Any],
+    sample: Any,
+    y_idx: int,
+    x_idx: int,
+) -> tuple[slice, slice]:
+    half_window = int(config.get("masking", {}).get("neighborhood_size", 1)) // 2
+    return (
+        slice(max(0, y_idx - half_window), min(sample.latitude.size, y_idx + half_window + 1)),
+        slice(max(0, x_idx - half_window), min(sample.longitude.size, x_idx + half_window + 1)),
+    )
 
 
 def _write_station_timeseries(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -770,6 +979,9 @@ def _write_per_station(path: Path, rows: list[dict[str, Any]]) -> None:
         "bias_mm",
         "correlation",
         "reference_offset_mm",
+        "insar_trend_mm_per_year",
+        "gnss_trend_mm_per_year",
+        "trend_difference_mm_per_year",
         "uncertainty_coverage_1sigma",
         "longitude",
         "latitude",
@@ -789,17 +1001,113 @@ def _write_skipped_stations(path: Path, rows: list[dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+def _build_sensitivity_summary(
+    config: dict[str, Any],
+    sample: Any,
+    stations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    variants = [
+        ("primary", {}),
+        ("collocation_weighted_window", {"collocation": {"strategy": "weighted_window", "half_window_days": 7}}),
+        (
+            "collocation_gaussian_smoothing",
+            {
+                "collocation": {
+                    "strategy": "gaussian_smoothing",
+                    "sigma_days": 10.0,
+                    "truncation_sigmas": 3.0,
+                }
+            },
+        ),
+        ("coherence_threshold_0.3", {"masking": {"coherence_threshold": 0.3}}),
+        ("coherence_threshold_0.5", {"masking": {"coherence_threshold": 0.5}}),
+        ("coherence_threshold_0.7", {"masking": {"coherence_threshold": 0.7}}),
+        ("reference_stable_window", {"reference_alignment": "stable_window"}),
+    ]
+    rows = []
+    for name, overrides in variants:
+        variant_config = _variant_config(config, overrides)
+        per_station, residual_records, skipped = _evaluate_network(variant_config, sample, stations)
+        aggregate = _aggregate_metrics(per_station, residual_records, n_epochs=len(sample.dates))
+        rows.append(
+            {
+                "variant": name,
+                "n_stations": aggregate["n_stations"],
+                "n_collocated_pairs": aggregate["n_collocated_pairs"],
+                "n_skipped_stations": len(skipped),
+                "rmse_mm": aggregate["rmse_mm"],
+                "mae_mm": aggregate["mae_mm"],
+                "bias_mm": aggregate["bias_mm"],
+                "median_abs_residual_mm": aggregate["median_abs_residual_mm"],
+            }
+        )
+    return {"variants": rows}
+
+
+def _evaluate_network(
+    config: dict[str, Any],
+    sample: Any,
+    stations: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[tuple[float, float, float]], list[dict[str, str]]]:
+    per_station: list[dict[str, Any]] = []
+    residual_records: list[tuple[float, float, float]] = []
+    skipped_stations: list[dict[str, str]] = []
+    for station in stations:
+        try:
+            record, series_rows = _evaluate_station(config, sample, station)
+        except ValueError as exc:
+            skipped_stations.append(
+                {"station_id": str(station["station_id"]), "reason": str(exc)}
+            )
+            continue
+        per_station.append(record)
+        residual_records.extend(
+            (
+                float(station["longitude"]),
+                float(station["latitude"]),
+                float(row["residual_mm"]),
+            )
+            for row in series_rows
+            if np.isfinite(float(row["residual_mm"]))
+        )
+    return per_station, residual_records, skipped_stations
+
+
+def _variant_config(config: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    variant = copy.deepcopy(config)
+    for key, value in overrides.items():
+        if key == "collocation":
+            variant[key] = value
+        elif isinstance(value, dict) and isinstance(variant.get(key), dict):
+            variant[key].update(value)
+        else:
+            variant[key] = value
+    return variant
+
+
 def _aggregate_metrics(
     per_station: list[dict[str, Any]],
     residual_records: list[tuple[float, float, float]],
+    *,
+    n_epochs: int,
 ) -> dict[str, Any]:
     residuals = np.asarray([item[2] for item in residual_records], dtype=float)
+    station_rmse = np.asarray([row["rmse_mm"] for row in per_station], dtype=float)
     aggregate = {
+        "n_epochs": int(n_epochs),
         "n_stations": len(per_station),
         "n_collocated_pairs": int(sum(row["n_pairs"] for row in per_station)),
         "rmse_mm": float(np.sqrt(np.nanmean(residuals**2))) if residuals.size else None,
         "bias_mm": float(np.nanmean(residuals)) if residuals.size else None,
         "mae_mm": float(np.nanmean(np.abs(residuals))) if residuals.size else None,
+        "median_abs_residual_mm": float(np.nanmedian(np.abs(residuals))) if residuals.size else None,
+        "station_rmse_median_mm": float(np.nanmedian(station_rmse)) if station_rmse.size else None,
+        "station_rmse_iqr_mm": (
+            float(np.nanpercentile(station_rmse, 75) - np.nanpercentile(station_rmse, 25))
+            if station_rmse.size
+            else None
+        ),
+        "bootstrap": _bootstrap_summary(residuals),
         "stations": per_station,
     }
     if len(residual_records) >= 3:
@@ -822,6 +1130,43 @@ def _aggregate_metrics(
     return aggregate
 
 
+def _bootstrap_summary(residuals: np.ndarray) -> dict[str, dict[str, float | int]]:
+    finite = residuals[np.isfinite(residuals)]
+    if finite.size < 2:
+        return {}
+    seed = 20240101
+    return {
+        "bias_mm": _bootstrap_interval(finite, np.nanmean, seed=seed),
+        "rmse_mm": _bootstrap_interval(
+            finite,
+            lambda values: float(np.sqrt(np.nanmean(values**2))),
+            seed=seed + 1,
+        ),
+    }
+
+
+def _bootstrap_interval(
+    values: np.ndarray,
+    statistic: Any,
+    *,
+    seed: int,
+    n_resamples: int = 2000,
+    confidence: float = 0.95,
+) -> dict[str, float | int]:
+    rng = np.random.default_rng(seed)
+    samples = rng.integers(0, values.size, size=(n_resamples, values.size))
+    estimates = np.asarray([statistic(values[idx]) for idx in samples], dtype=float)
+    alpha = (1.0 - confidence) / 2.0
+    lower, upper = np.nanquantile(estimates, [alpha, 1.0 - alpha])
+    return {
+        "estimate": float(statistic(values)),
+        "lower": float(lower),
+        "upper": float(upper),
+        "n_resamples": int(n_resamples),
+        "confidence": float(confidence),
+    }
+
+
 def _write_station_figure(path: Path, station_id: str, rows: list[dict[str, Any]]) -> None:
     try:
         import matplotlib.pyplot as plt
@@ -838,6 +1183,171 @@ def _write_station_figure(path: Path, station_id: str, rows: list[dict[str, Any]
     ax.tick_params(axis="x", rotation=30)
     ax.legend(frameon=False)
     ax.grid(True, linewidth=0.4, alpha=0.4)
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _write_opera_displacement_map(path: Path, sample: Any) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    field = np.asarray(sample.displacement[-1], dtype=float)
+    stride_y = max(1, field.shape[0] // 500)
+    stride_x = max(1, field.shape[1] // 500)
+    shown = field[::stride_y, ::stride_x]
+    fig, ax = plt.subplots(figsize=(6.0, 4.5), constrained_layout=True)
+    image = ax.imshow(
+        shown,
+        extent=[
+            float(np.nanmin(sample.longitude)),
+            float(np.nanmax(sample.longitude)),
+            float(np.nanmin(sample.latitude)),
+            float(np.nanmax(sample.latitude)),
+        ],
+        origin="lower",
+        cmap="RdBu_r",
+        aspect="auto",
+    )
+    ax.set_title(f"DISP-S1 LOS displacement: {sample.dates[-1].isoformat()}")
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+    fig.colorbar(image, ax=ax, label="LOS displacement (mm)")
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _write_opera_coherence_map(path: Path, sample: Any) -> None:
+    if sample.coherence is None:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    coherence = np.asarray(sample.coherence, dtype=float)
+    valid_count = np.isfinite(coherence).sum(axis=0)
+    field = np.full(coherence.shape[1:], np.nan, dtype=float)
+    np.divide(
+        np.nansum(coherence, axis=0),
+        valid_count,
+        out=field,
+        where=valid_count > 0,
+    )
+    stride_y = max(1, field.shape[0] // 500)
+    stride_x = max(1, field.shape[1] // 500)
+    shown = field[::stride_y, ::stride_x]
+    fig, ax = plt.subplots(figsize=(6.0, 4.5), constrained_layout=True)
+    image = ax.imshow(
+        shown,
+        extent=[
+            float(np.nanmin(sample.longitude)),
+            float(np.nanmax(sample.longitude)),
+            float(np.nanmin(sample.latitude)),
+            float(np.nanmax(sample.latitude)),
+        ],
+        origin="lower",
+        cmap="viridis",
+        vmin=0.0,
+        vmax=1.0,
+        aspect="auto",
+    )
+    ax.set_title("Mean OPERA temporal coherence")
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+    fig.colorbar(image, ax=ax, label="temporal coherence")
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _write_station_coverage_map(path: Path, per_station: list[dict[str, Any]]) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    fig, ax = plt.subplots(figsize=(5.0, 4.0), constrained_layout=True)
+    ax.scatter(
+        [row["longitude"] for row in per_station],
+        [row["latitude"] for row in per_station],
+        c=[row["n_pairs"] for row in per_station],
+        cmap="viridis",
+        edgecolor="black",
+        linewidth=0.4,
+    )
+    for row in per_station:
+        ax.text(row["longitude"], row["latitude"], row["station_id"], fontsize=6)
+    ax.set_title("Admitted GNSS stations")
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+    ax.grid(True, linewidth=0.4, alpha=0.4)
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _write_station_residual_map(path: Path, per_station: list[dict[str, Any]]) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    fig, ax = plt.subplots(figsize=(5.0, 4.0), constrained_layout=True)
+    scatter = ax.scatter(
+        [row["longitude"] for row in per_station],
+        [row["latitude"] for row in per_station],
+        c=[row["rmse_mm"] for row in per_station],
+        cmap="magma",
+        edgecolor="black",
+        linewidth=0.4,
+    )
+    ax.set_title("Station RMSE")
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+    ax.grid(True, linewidth=0.4, alpha=0.4)
+    fig.colorbar(scatter, ax=ax, label="RMSE (mm)")
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _write_multi_station_timeseries(
+    path: Path,
+    station_series_by_id: dict[str, list[dict[str, Any]]],
+) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    fig, ax = plt.subplots(figsize=(7.0, 4.0), constrained_layout=True)
+    for station_id, rows in list(station_series_by_id.items())[:6]:
+        ax.plot(
+            [row["date"] for row in rows],
+            [row["residual_mm"] for row in rows],
+            marker="o",
+            linewidth=1.0,
+            label=station_id,
+        )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title("Station residual time series")
+    ax.set_ylabel("DISP-S1 minus GNSS (mm)")
+    ax.tick_params(axis="x", rotation=30)
+    ax.legend(frameon=False, ncol=2)
+    ax.grid(True, linewidth=0.4, alpha=0.4)
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _write_sensitivity_summary_figure(path: Path, sensitivity: dict[str, Any]) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    variants = sensitivity.get("variants", [])
+    if not variants:
+        return
+    labels = [row["variant"].replace("_", "\n") for row in variants]
+    values = [row["rmse_mm"] for row in variants]
+    fig, ax = plt.subplots(figsize=(7.0, 4.0), constrained_layout=True)
+    ax.bar(labels, values, color="#34495e")
+    ax.set_title("Sensitivity of aggregate RMSE")
+    ax.set_ylabel("RMSE (mm)")
+    ax.tick_params(axis="x", labelsize=7)
     fig.savefig(path, dpi=130)
     plt.close(fig)
 

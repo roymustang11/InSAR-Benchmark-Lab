@@ -20,6 +20,10 @@ A station $s$ enters the validation set when:
 3. The station's NGL `steps.txt` reports no uncorrected equipment or
    coseismic offset inside $[t_0, t_1]$. Stations with uncorrected steps
    may enter a sensitivity branch but not the primary set.
+4. The station has enough collocated InSAR-GNSS pairs for the declared
+   analysis tier. Pilot displacement-residual checks require at least two
+   pairs; trend and velocity verdicts require enough epochs for stable
+   regression and must report the actual threshold used by the experiment.
 
 ## 2. Spatial collocation
 
@@ -70,7 +74,21 @@ For each admitted station, the framework reports:
 - $\sigma$-coverage at $1\sigma$ and $2\sigma$ when product uncertainty
   is available, computed by `disp_s1_eval.metrics.uncertainty_coverage`.
 
-## 6. Per-station verdict
+## 6. Evidence tiers
+
+Experiments report one of three evidence tiers before reporting a verdict:
+
+| Tier | Minimum evidence | Permitted interpretation |
+| --- | --- | --- |
+| Pilot | At least 2 InSAR epochs and 5 admitted GNSS stations | Pipeline and provenance demonstration; residual magnitudes are descriptive. |
+| Expanded | At least 8 InSAR epochs and 10 admitted GNSS stations | Quantitative residual validation, sensitivity analysis, and spatial error characterization. |
+| Final | Enough epochs for stable station-level trend estimates across the admitted network | Velocity/trend verdicts and stronger scientific interpretation. |
+
+An experiment may exceed these thresholds. If it falls short, it must
+state the limitation in its results summary and avoid the higher-tier
+claims.
+
+## 7. Per-station verdict
 
 A station is validated for $P$ when all of the following hold:
 
@@ -86,7 +104,7 @@ Defaults are consistent with published Sentinel-1 validation practice
 and may be tightened or relaxed per experiment; the chosen values are
 recorded in the manifest.
 
-## 7. Aggregate verdict
+## 8. Aggregate verdict
 
 Across the validation set, the framework reports:
 
@@ -104,7 +122,7 @@ stations have a positive per-station verdict and the product-wide bias
 95% CI includes zero. The threshold is reportable, not punitive: an
 experiment may report a failed verdict and analyze why.
 
-## 8. Multiple-product comparisons
+## 9. Multiple-product comparisons
 
 When an experiment evaluates several products jointly, the framework
 additionally reports:
@@ -115,7 +133,7 @@ additionally reports:
   the factor; mixed-effects with station as a random intercept when
   station counts allow).
 
-## 9. Sensitivity branches
+## 10. Sensitivity branches
 
 Each primary experiment includes sensitivity sub-sections covering:
 
@@ -128,7 +146,7 @@ Each primary experiment includes sensitivity sub-sections covering:
 The primary verdict is reported under default settings; the sensitivity
 branches indicate how robust the verdict is to those choices.
 
-## 10. Reporting format
+## 11. Reporting format
 
 Every experiment produces, at minimum:
 

@@ -68,7 +68,8 @@ choice is recorded per experiment.
 
 | Frame | Source | Notes |
 | --- | --- | --- |
-| `IGS14` | Native NGL final solutions (`tenv3`). | Default for all GNSS ingestion. |
+| `IGS20` | Native NGL final solutions (`tenv3`). | Default for new GNSS ingestion. |
+| `IGS14` | Legacy NGL final solutions (`tenv3`). | Supported for historical experiments and backward compatibility. |
 | `NA12` | NGL plate-fixed solutions. | Used when isolating intra-plate deformation. |
 | `insar_native` | Per-product, defined by the chosen InSAR reference pixel and reference epoch. | Always relative; offsets per station are estimated. |
 

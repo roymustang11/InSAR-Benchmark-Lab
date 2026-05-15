@@ -12,7 +12,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/figures/workflow.png" alt="Pipeline overview" width="900"/>
+  <img src="experiments/E01_central_valley_disp_s1_vs_gnss/results/figures/opera_displacement_map.png" alt="Measured OPERA DISP-S1 LOS displacement over the San Joaquin Valley" width="440"/>
+  <img src="experiments/E01_central_valley_disp_s1_vs_gnss/results/figures/opera_coherence_map.png" alt="Measured OPERA temporal coherence over the San Joaquin Valley" width="440"/>
 </p>
 
 ---
@@ -25,10 +26,11 @@ framework treats reference-frame realization, atmospheric correction, and
 processor choice as experimental factors, and produces every result as a
 versioned artifact with full provenance.
 
-The first study area is groundwater-related land subsidence in the
-San Joaquin Valley, California. Volcano and landslide configurations
-follow the same protocol and are added under [`configs/`](configs/) and
-[`experiments/`](experiments/).
+The first completed study evaluates groundwater-related land subsidence in
+the San Joaquin Valley, California, using real OPERA DISP-S1 NetCDF
+products and continuous GNSS time series. Volcano and landslide
+configurations can follow the same protocol under [`configs/`](configs/)
+and [`experiments/`](experiments/).
 
 ## Highlights
 
@@ -55,8 +57,50 @@ experiment. It validates OPERA Level-3 DISP-S1 displacement against
 Nevada Geodetic Laboratory daily GNSS positions over the San Joaquin
 Valley aquifer system.
 
-The wet-run pipeline now supports local OPERA NetCDF granules and local
-or cached NGL `tenv3` files. A completed run writes:
+The current expanded local run uses OPERA frame `F09155`, 12 DISP-S1
+epochs, 21 admitted GNSS stations, and 243 collocated InSAR-GNSS pairs.
+For this frame and time window, the DISP-S1 minus GNSS LOS residual has
+RMSE 25.58 mm, MAE 21.00 mm, and a bootstrap bias interval of -3.30 to
+3.01 mm after station-wise reference alignment. The result is documented
+as a frame-specific validation result, not a regional verdict for all
+Central Valley frames.
+
+| Result | Value |
+| --- | ---: |
+| OPERA frame | `F09155` |
+| OPERA epochs | 12 |
+| GNSS stations | 21 |
+| Collocated pairs | 243 |
+| RMSE | 25.58 mm |
+| MAE | 21.00 mm |
+| RMSE 95% CI | 23.63 to 27.53 mm |
+| Bias 95% CI | -3.30 to 3.01 mm |
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="experiments/E01_central_valley_disp_s1_vs_gnss/results/figures/opera_displacement_map.png" width="430"/><br/>
+      <sub>Measured DISP-S1 LOS displacement, final epoch</sub>
+    </td>
+    <td align="center">
+      <img src="experiments/E01_central_valley_disp_s1_vs_gnss/results/figures/opera_coherence_map.png" width="430"/><br/>
+      <sub>Measured OPERA temporal coherence</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="experiments/E01_central_valley_disp_s1_vs_gnss/results/figures/station_residual_map.png" width="430"/><br/>
+      <sub>GNSS station residual RMSE map</sub>
+    </td>
+    <td align="center">
+      <img src="experiments/E01_central_valley_disp_s1_vs_gnss/results/figures/sensitivity_summary.png" width="430"/><br/>
+      <sub>Validation sensitivity across methodological choices</sub>
+    </td>
+  </tr>
+</table>
+
+The wet-run pipeline supports local OPERA NetCDF granules and local or
+cached NGL `tenv3` files. A completed run writes:
 
 ```text
 experiments/E01_central_valley_disp_s1_vs_gnss/results/
@@ -64,6 +108,8 @@ experiments/E01_central_valley_disp_s1_vs_gnss/results/
   aggregate.json
   station_timeseries/*.csv
   figures/*.png
+  sensitivity.json
+  analysis.md
   manifest.json
   summary.md
 ```
@@ -95,8 +141,9 @@ python -m experiments.E01_central_valley_disp_s1_vs_gnss.run \
 
 ## Method Illustrations
 
-The figures below document the expected artifact types and plotting
-style. They are not measurements.
+The measured E01 figures above are the current study outputs. The figures
+below document additional method concepts and expected artifact types for
+future experiments.
 
 <table>
   <tr>

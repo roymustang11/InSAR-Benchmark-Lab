@@ -1,0 +1,22 @@
+name: Central Valley Subsidence
+slug: central-valley-subsidence
+application: subsidence
+region:
+  west: -121.0
+  south: 35.0
+  east: -119.0
+  north: 37.0
+time_window:
+  start: "2018-01-01"
+  end: "2023-12-31"
+reference:
+  method: stable-area
+  notes: Select a documented low-deformation area outside the main subsidence bowl before final analysis.
+data_sources:
+  insar:
+    - OPERA DISP-S1
+    - ASF HyP3
+    - MintPy-compatible time-series products
+  gnss:
+    - Nevada Geodetic Laboratory
+    - UNAVCO/EarthScope GNSS station products

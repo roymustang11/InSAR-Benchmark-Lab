@@ -57,6 +57,8 @@ tests/                    Unit tests for metrics, config loading, and future loa
 
 Large geospatial products, HDF5 files, GeoTIFFs, and downloaded archives are intentionally excluded from Git. The repository will document how to obtain data from open sources such as ASF HyP3, OPERA, ARIA, MintPy-compatible outputs, and GNSS archives.
 
+OPERA product files are Earthdata-protected, so Zarr-reference metadata inspection in Notebook 02 is implemented as an opt-in workflow with `RUN_AUTHENTICATED_INSPECTION = True`. It requires Earthdata Login credentials configured through `.netrc`, environment variables, or an interactive `earthaccess` login flow.
+
 ## Status
 
 This repository is in its initial research-foundation phase. The first implemented code focuses on validation metrics and reproducible study-area configuration.

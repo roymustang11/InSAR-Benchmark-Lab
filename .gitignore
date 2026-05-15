@@ -1,1 +1,40 @@
+# Worktrees
 .worktrees/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local data and generated products
+data/raw/
+data/interim/
+data/processed/
+data/external/
+outputs/
+*.h5
+*.hdf5
+*.nc
+*.tif
+*.tiff
+*.vrt
+*.zip
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

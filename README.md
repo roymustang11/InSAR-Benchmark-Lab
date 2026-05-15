@@ -14,15 +14,32 @@ The initial flagship case study is land subsidence in California's Central Valle
 
 Later modules will extend the same framework to volcano deformation and landslide monitoring.
 
+## Workflow Diagram
+
+```mermaid
+flowchart LR
+    A[Study-area config] --> B[OPERA DISP-S1 metadata search]
+    B --> C[Product inventory and metadata inspection]
+    C --> D[InSAR displacement time series]
+    E[GNSS time series] --> F[Date and reference alignment]
+    D --> F
+    F --> G[Validation metrics]
+    G --> H[Reference and uncertainty sensitivity]
+    H --> I[Deformation story map]
+    I --> J[Research interpretation and roadmap]
+```
+
 ## Planned Notebook Track
 
 | Notebook | Status | Purpose |
 | --- | --- | --- |
 | [01 Project Orientation](notebooks/01_project_orientation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/01_project_orientation.ipynb) | Runnable orientation | Study area, scientific question, data sources, workflow map. |
 | [02 OPERA DISP-S1 Product Search](notebooks/02_hyp3_or_opera_to_timeseries.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/02_hyp3_or_opera_to_timeseries.ipynb) | Runnable metadata search | Search OPERA DISP-S1 products, build an inventory table, and inspect product metadata links. |
-| [03 MintPy Time Series Validation](notebooks/03_mintpy_timeseries_validation.ipynb) | Stub | Compare InSAR displacement time series against GNSS. |
-| [04 Uncertainty And Reference Sensitivity](notebooks/04_uncertainty_and_reference_sensitivity.ipynb) | Stub | Test reference-point, coherence, and masking sensitivity. |
-| [05 Deformation Story Map](notebooks/05_deformation_story_map.ipynb) | Stub | Produce final maps, time-series plots, residuals, and interpretation figures. |
+| [03 InSAR Time-Series Validation](notebooks/03_mintpy_timeseries_validation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/03_mintpy_timeseries_validation.ipynb) | Runnable demonstration | Compare InSAR displacement time series against GNSS using clearly labeled fixture data. |
+| [04 Uncertainty And Reference Sensitivity](notebooks/04_uncertainty_and_reference_sensitivity.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/04_uncertainty_and_reference_sensitivity.ipynb) | Runnable demonstration | Test reference-point, coherence, and masking sensitivity using clearly labeled fixture data. |
+| [05 Deformation Story Map](notebooks/05_deformation_story_map.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/05_deformation_story_map.ipynb) | Runnable demonstration | Produce final maps, time-series plots, residuals, and interpretation figures using clearly labeled fixture data. |
+
+Notebooks 03-05 use deterministic demonstration fixtures. They are workflow demonstrations, not real Central Valley deformation results. Real products will replace those fixtures after OPERA/MintPy extraction and GNSS alignment are connected.
 
 ## Quickstart
 

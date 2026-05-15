@@ -16,6 +16,9 @@ def test_notebook_02_documents_opera_disp_s1_search_path():
     assert "OPERA_L3_DISP-S1_V1" in text
     assert "earthaccess.search_data" in text
     assert "RUN_LIVE_SEARCH" in text
+    assert "RUN_AUTHENTICATED_INSPECTION" in text
+    assert "granule_to_inventory_record" in text
+    assert "extract_zarr_reference_variables" in text
     assert ".summary()" not in text
 
 

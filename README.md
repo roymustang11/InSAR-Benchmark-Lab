@@ -19,7 +19,7 @@ Later modules will extend the same framework to volcano deformation and landslid
 | Notebook | Status | Purpose |
 | --- | --- | --- |
 | [01 Project Orientation](notebooks/01_project_orientation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/01_project_orientation.ipynb) | Runnable orientation | Study area, scientific question, data sources, workflow map. |
-| [02 HyP3 Or OPERA To Time Series](notebooks/02_hyp3_or_opera_to_timeseries.ipynb) | Stub | Organize open InSAR products into analysis-ready structures. |
+| [02 OPERA DISP-S1 Product Search](notebooks/02_hyp3_or_opera_to_timeseries.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roymustang11/InSAR-Benchmark-Lab/blob/main/notebooks/02_hyp3_or_opera_to_timeseries.ipynb) | Runnable metadata search | Search OPERA DISP-S1 products and build a small inventory table. |
 | [03 MintPy Time Series Validation](notebooks/03_mintpy_timeseries_validation.ipynb) | Stub | Compare InSAR displacement time series against GNSS. |
 | [04 Uncertainty And Reference Sensitivity](notebooks/04_uncertainty_and_reference_sensitivity.ipynb) | Stub | Test reference-point, coherence, and masking sensitivity. |
 | [05 Deformation Story Map](notebooks/05_deformation_story_map.ipynb) | Stub | Produce final maps, time-series plots, residuals, and interpretation figures. |
